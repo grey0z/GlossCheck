@@ -1,0 +1,13 @@
+# Build
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Dữ liệu chạy máy (tạo ra khi chạy app)
+Logs/
+Results/
+Counters.xml
+MachineConfig.xml
+Recipes/
