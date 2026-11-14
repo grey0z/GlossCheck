@@ -93,6 +93,19 @@ Chạy `GlossCheck\bin\Debug\net48\GlossCheck.exe`. Mặc định là chế đ�
 - Bấm thì còi im ngay, nhưng alarm vẫn còn và vẫn phải RESET.
 - Có alarm hoặc tiếng bíp mới thì còi kêu lại.
 
+**Popup cảnh báo** (khi có alarm / dừng khẩn cấp):
+- Tự bật lên giữa màn hình. Dải màu cam = ALARM, đỏ = DỪNG KHẨN CẤP, nhấp nháy khi còi đang kêu.
+- Hiện mã lỗi (E302…), thời điểm, nội dung, **xảy ra tại** (luồng + bước đang chạy), **nguyên nhân** và **cách xử lý**.
+- Dòng gợi ý cho biết sau RESET cần làm gì: START chạy tiếp bước lỗi, hay phải ORIGIN lại. Nếu IO board vẫn mất kết nối thì nút RESET bị khoá và có dòng báo đỏ.
+- Nút RESET / TẮT CÒI / ĐÓNG. ĐÓNG chỉ ẩn popup, alarm vẫn còn; bấm vào dòng alarm đỏ trên đầu màn hình để mở lại.
+- RESET ở bất kỳ đâu (popup, header, nút STOP cứng) thì popup tự đóng.
+
+**Tab Alarm:**
+- Alarm đang có (bấm để mở popup).
+- Lịch sử alarm theo ngày: thời gian, mã, loại, nội dung, xảy ra tại, RESET lúc, kéo dài. Chọn ngày để xem ngày cũ; dòng chưa RESET tô đỏ nhạt.
+- Lưu ở `Logs\Alarms\yyyy-MM-dd.csv` (mở được bằng Excel). Ghi ngay lúc báo, nên tắt phần mềm khi đang alarm vẫn còn bản ghi.
+- Bảng tra cứu tất cả mã lỗi kèm nguyên nhân / cách xử lý. Nội dung này nằm trong `Core\MachineAlarm.cs`; sửa ở đó nếu muốn đổi hướng dẫn cho người vận hành.
+
 **Thanh kết nối** (đáy màn hình): mỗi thiết bị 1 đèn.
 - Thiết bị: **Trục X**, **Trục Y**, **IO board**, **Máy đo gloss** (kèm cổng COM; rê chuột để xem model, số serial, trạng thái calib).
 - Màu đèn: **xanh** = đã kết nối, **đỏ** = mất kết nối, **cam** = máy đo chưa calib / đang kết nối, **xám** = mô phỏng.
@@ -114,11 +127,11 @@ Chạy `GlossCheck\bin\Debug\net48\GlossCheck.exe`. Mặc định là chế đ�
 | `Hardware.Fastech` | `EziServoAxis`, `EziLinearInterpolator` (`FAS_MoveLinearAbsPos`), `EziIoModule`, `EziNativeMethods` (P/Invoke) |
 | `Hardware.Nhg` | `NhgGlossMeter`, `NhgNativeMethods` |
 | `Hardware.Simulation` | `SimWorld`, `SimAxis`, `SimIoModule`, `SimGlossMeter` |
-| `Core` | `Machine` (trạng thái, vòng quét, nút cứng, đèn), `Sequence` + các `Step`, `Cylinder`, `Gantry` (interlock), `JigStation`, `GlossMeterService` (máy đo chạy thread riêng), `MachineAlarm` (mã E001…) |
+| `Core` | `Machine` (trạng thái, vòng quét, nút cứng, đèn), `Sequence` + các `Step`, `Cylinder`, `Gantry` (interlock), `JigStation`, `GlossMeterService` (máy đo chạy thread riêng), `MachineAlarm` (mã E002…, nguyên nhân, cách xử lý) |
 | `Sequences` | `HomingSequence`, `MeasureSequence` |
 | `Settings` | `MachineConfig` (XML), `Recipe` / `TeachPoints` / `AngleSpec` (JSON), `RecipeStore` |
-| `Data` | `JudgeResult`, `ResultLogger` (CSV), `TextLog` |
-| `UI` | `MainForm` cùng 5 tab: `AutoPage` (`JigPanel`), `ManualPage`, `TeachingPage` (`JogPanel`), `RecipePage`, `ConfigPage` |
+| `Data` | `JudgeResult`, `ResultLogger` (CSV), `TextLog`, `CounterStore`, `ProductionReport`, `AlarmHistory` (lịch sử alarm CSV) |
+| `UI` | `MainForm` cùng 7 tab: `AutoPage` (`JigPanel`), `ManualPage`, `ProductionPage`, `TeachingPage` (`JogPanel`), `RecipePage`, `ConfigPage`, `AlarmPage`; popup `AlarmForm`, `SimulationForm` |
 
 **Luồng đo** (`Sequences/MeasureSequence.cs`, rút gọn):
 

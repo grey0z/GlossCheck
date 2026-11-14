@@ -46,13 +46,30 @@ namespace GlossCheck.Core
         protected abstract IEnumerable<IStep> Run();
         /// <summary>Được gọi khi luồng bị huỷ (EMG / kết thúc auto): trả dữ liệu về trạng thái nhất quán.</summary>
         protected virtual void OnAborted() { }
-
+        /// <summary>
+        /// Chờ điều kiện thực thi
+        /// </summary>
+        /// <param name="description">Mô tả</param>
+        /// <param name="condition">Điều kiện</param>
+        /// <param name="timeoutMs">Thời gian timeout</param>
+        /// <param name="timeoutAlarm">Cảnh báo</param>
+        /// <returns></returns>
         protected static IStep WaitUntil(string description, Func<bool> condition, int timeoutMs = 0, MachineAlarm timeoutAlarm = null)
         {
             return new WaitStep(description, condition, timeoutMs, timeoutAlarm);
         }
-
+        /// <summary>
+        /// Thực hiện 1 hành động ngay lập tức
+        /// </summary>
+        /// <param name="description">Mô tả</param>
+        /// <param name="action">Hành động thực thi</param>
+        /// <returns></returns>
         protected static IStep Do(string description, Action action) { return new ActionStep(description, action); }
+        /// <summary>
+        /// Trễ thời gian. Thời gian đang Pause không được tính.
+        /// </summary>
+        /// <param name="milliseconds">Thời gian delay</param>
+        /// <returns></returns>
         protected static IStep Delay(int milliseconds) { return new DelayStep(milliseconds); }
 
         // ================= Machine gọi =================

@@ -96,11 +96,12 @@ namespace GlossCheck.Core
 
             MeterService = new GlossMeterService(meter, Log);
             ResultLogger = new ResultLogger(config.ResolveResultFolder());
+            AlarmHistory = new AlarmHistory();
 
             Measure = new MeasureSequence(this);
             Homing = new HomingSequence(this);
-            Measure.AlarmHandler = (sequence, alarm) => RaiseAlarm(alarm, sequence.Name);
-            Homing.AlarmHandler = (sequence, alarm) => RaiseAlarm(alarm, sequence.Name, true);
+            Measure.AlarmHandler = (sequence, alarm) => RaiseAlarm(alarm, SourceOf(sequence));
+            Homing.AlarmHandler = (sequence, alarm) => RaiseAlarm(alarm, SourceOf(sequence), true);
 
             MeterService.BeginOpen(config.Meter.PortName);
         }
@@ -121,6 +122,7 @@ namespace GlossCheck.Core
         public JigStation[] Jigs { get; private set; }
         public GlossMeterService MeterService { get; private set; }
         public ResultLogger ResultLogger { get; private set; }
+        public AlarmHistory AlarmHistory { get; private set; }
         public MeasureSequence Measure { get; private set; }
         public HomingSequence Homing { get; private set; }
 
@@ -469,6 +471,7 @@ namespace GlossCheck.Core
                     foreach (var axis in Axes) axis.ResetAlarm();
                     bool needsOrigin = _activeAlarm != null && _activeAlarm.NeedsOrigin;
                     _activeAlarm = null;
+                    AlarmHistory.MarkReset();
                     if (needsOrigin)
                     {
                         Measure.Abort();
@@ -483,6 +486,7 @@ namespace GlossCheck.Core
                     if (Io.IsCommError) { Log("Module IO vẫn mất kết nối: kiểm tra cáp / nguồn, bấm Kết nối lại rồi mới RESET."); return; }
                     foreach (var axis in Axes) axis.ResetAlarm();
                     _activeAlarm = null;
+                    AlarmHistory.MarkReset();
                     SetState(MachineState.NotHomed);
                     break;
 
@@ -713,7 +717,10 @@ namespace GlossCheck.Core
             Homing.Abort();
             foreach (var axis in Axes) { axis.EmergencyStop(); axis.SetServo(false); axis.ClearHomed(); }
             // Xi lanh van 2 cuộn: KHÔNG đổi trạng thái
+            alarm.Source = "Giám sát an toàn";
+            alarm.Time = DateTime.Now;
             _activeAlarm = alarm;
+            AlarmHistory.Add(alarm, true);
             _isBuzzerMuted = false; // sự cố mới: còi kêu lại
             Log("EMERGENCY: " + alarm);
             SetState(MachineState.Emergency);
@@ -738,9 +745,19 @@ namespace GlossCheck.Core
             _activeAlarm = (forceOrigin || wasHoming) && !alarm.NeedsOrigin
                 ? new MachineAlarm(AlarmCode.HomingFailed, alarm.Message)
                 : alarm;
+            _activeAlarm.Source = source;
+            _activeAlarm.Time = DateTime.Now;
+            AlarmHistory.Add(_activeAlarm, false);
             _isBuzzerMuted = false; // sự cố mới: còi kêu lại
             Log("ALARM [" + source + "] " + _activeAlarm);
             SetState(MachineState.Alarm);
+        }
+
+        /// <summary>Nguồn alarm = tên luồng + bước đang chạy, để biết lỗi xảy ra ở đâu.</summary>
+        private static string SourceOf(Sequence sequence)
+        {
+            string step = sequence.CurrentStepDescription;
+            return string.IsNullOrEmpty(step) ? sequence.Name : sequence.Name + ": " + step;
         }
 
         private void UpdateLamps(double time)
@@ -794,7 +811,7 @@ namespace GlossCheck.Core
                 _description = description;
                 _point = point;
                 _releaseAfterMove = releaseAfterMove;
-                AlarmHandler = (sequence, alarm) => _machine.RaiseAlarm(alarm, Name);
+                AlarmHandler = (sequence, alarm) => _machine.RaiseAlarm(alarm, SourceOf(sequence));
             }
 
             protected override System.Collections.Generic.IEnumerable<IStep> Run()

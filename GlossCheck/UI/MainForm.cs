@@ -53,6 +53,7 @@ namespace GlossCheck.UI
             info.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
             _lblRecipe = new Label { Dock = DockStyle.Fill, Font = Ui.TitleFont, TextAlign = ContentAlignment.MiddleLeft };
             _lblAlarm = new Label { Dock = DockStyle.Fill, Font = Ui.BoldFont, ForeColor = Ui.NgColor, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true }; // chữ dài: "…" (bản đầy đủ ở log)
+            _lblAlarm.Click += (s, e) => { if (_machine.ActiveAlarm != null) ShowAlarmPopup(); }; // mở lại popup đã đóng
             info.Controls.Add(_lblRecipe, 0, 0);
             info.Controls.Add(_lblAlarm, 0, 1);
 
@@ -82,11 +83,12 @@ namespace GlossCheck.UI
             // ---------- Tabs ----------
             _tabs = new TabControl { Dock = DockStyle.Fill, Font = Ui.TitleFont, Padding = new Point(18, 6) };
             AddPage("Auto", new AutoPage(_machine));
+            AddPage("Manual", new ManualPage(_machine));
             AddPage("Sản lượng", new ProductionPage(_machine));
-            AddPage("Thao tác tay", new ManualPage(_machine));
             AddPage("Teaching", new TeachingPage(_machine));
-            AddPage("Model / Spec", new RecipePage(_machine));
-            AddPage("Cấu hình", new ConfigPage(_machine));
+            AddPage("Model", new RecipePage(_machine));
+            AddPage("Config", new ConfigPage(_machine));
+            AddPage("Alarm", new AlarmPage(_machine, ShowAlarmPopup));
             _tabs.SelectedIndexChanged += (s, e) => RefreshView();
 
             // ---------- Log + status ----------
@@ -100,6 +102,30 @@ namespace GlossCheck.UI
         }
 
         private SimulationForm _simulationForm;
+        private AlarmForm _alarmForm;
+        private MachineAlarm _popupAlarm;
+
+        /// <summary>Hiện popup cho alarm đang có (tự gọi khi có alarm mới, hoặc khi bấm vào dòng alarm).</summary>
+        private void ShowAlarmPopup()
+        {
+            var alarm = _machine.ActiveAlarm;
+            if (alarm == null) return;
+            if (_alarmForm == null || _alarmForm.IsDisposed) _alarmForm = new AlarmForm(_machine);
+            _alarmForm.ShowAlarm(alarm, this);
+        }
+
+        /// <summary>Alarm mới -> mở popup; alarm đã RESET -> đóng popup.</summary>
+        private void UpdateAlarmPopup()
+        {
+            var alarm = _machine.ActiveAlarm;
+            if (alarm != _popupAlarm)
+            {
+                _popupAlarm = alarm;
+                if (alarm != null) ShowAlarmPopup();
+                else if (_alarmForm != null && !_alarmForm.IsDisposed && _alarmForm.Visible) _alarmForm.Hide();
+            }
+            if (_alarmForm != null && !_alarmForm.IsDisposed && _alarmForm.Visible) _alarmForm.RefreshView();
+        }
 
         private void ShowSimulation()
         {
@@ -137,6 +163,9 @@ namespace GlossCheck.UI
             Ui.Set(_lblState, Ui.StateText(state), Ui.StateColor(state));
             var alarm = _machine.ActiveAlarm;
             Ui.Set(_lblAlarm, alarm != null ? alarm.ToString() : (_machine.IsManualMoveActive ? "Đang chạy tay: " + _machine.ManualMoveDescription : ""));
+            var alarmCursor = alarm != null ? Cursors.Hand : Cursors.Default;
+            if (_lblAlarm.Cursor != alarmCursor) _lblAlarm.Cursor = alarmCursor;
+            UpdateAlarmPopup();
             Ui.Set(_lblRecipe, "Model: " + _machine.Recipe.Name);
 
             Ui.SetEnabled(_btnOrigin, state == MachineState.NotHomed || state == MachineState.Ready);
